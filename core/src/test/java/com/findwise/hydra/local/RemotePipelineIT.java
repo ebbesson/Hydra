@@ -1,35 +1,36 @@
-package com.findwise.hydra.net;
+package com.findwise.hydra.local;
 
-import static org.junit.Assert.fail;
+import com.findwise.hydra.CachingDocumentNIO;
+import com.findwise.hydra.ConfigurationFactory;
+import com.findwise.hydra.CoreConfiguration;
+import com.findwise.hydra.DatabaseDocument;
+import com.findwise.hydra.ShutdownHandler;
+import com.findwise.hydra.Document.Action;
+import com.findwise.hydra.DocumentFile;
+import com.findwise.hydra.NodeMaster;
+import com.findwise.hydra.NoopCache;
+import com.findwise.hydra.Pipeline;
+import com.findwise.hydra.mongodb.MongoConnector;
+import com.findwise.hydra.mongodb.MongoDocument;
+import com.findwise.hydra.mongodb.MongoDocumentID;
+import com.findwise.hydra.mongodb.MongoType;
+import com.findwise.hydra.net.HttpRESTHandler;
+import com.findwise.hydra.net.RESTServer;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 import junit.framework.Assert;
-
 import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.Mockito;
 
-import com.findwise.hydra.CachingDocumentNIO;
-import com.findwise.hydra.ConfigurationFactory;
-import com.findwise.hydra.CoreConfiguration;
-import com.findwise.hydra.DatabaseDocument;
-import com.findwise.hydra.Document.Action;
-import com.findwise.hydra.DocumentFile;
-import com.findwise.hydra.NodeMaster;
-import com.findwise.hydra.NoopCache;
-import com.findwise.hydra.Pipeline;
-import com.findwise.hydra.local.Local;
-import com.findwise.hydra.local.LocalDocument;
-import com.findwise.hydra.local.LocalQuery;
-import com.findwise.hydra.local.RemotePipeline;
-import com.findwise.hydra.mongodb.MongoConnector;
-import com.findwise.hydra.mongodb.MongoDocument;
-import com.findwise.hydra.mongodb.MongoDocumentID;
-import com.findwise.hydra.mongodb.MongoType;
-import com.mongodb.Mongo;
+import static org.junit.Assert.fail;
 
 public class RemotePipelineIT {
+	public static final String TEST_NAME = "jUnit-RemotePipelineTest";
 	private static NodeMaster<MongoType> nm;
 	private MongoDocument test, test2;
 	private static MongoConnector dbc;
@@ -38,12 +39,15 @@ public class RemotePipelineIT {
 
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
-		new Mongo().getDB("jUnit-RemotePipelineTest").dropDatabase();
-		
-		CoreConfiguration conf = ConfigurationFactory.getConfiguration("jUnit-RemotePipelineTest");
+		CoreConfiguration conf = ConfigurationFactory.getConfiguration(TEST_NAME);
+		new MongoClient(new MongoClientURI(conf.getDatabaseUrl())).getDB(TEST_NAME).dropDatabase();
 		dbc = new MongoConnector(conf);
 		
-		nm = new NodeMaster<MongoType>(conf, new CachingDocumentNIO<MongoType>(dbc, new NoopCache<MongoType>(), false), new Pipeline());
+		ShutdownHandler shutdownHandler = Mockito.mock(ShutdownHandler.class);
+		
+		Mockito.when(shutdownHandler.isShuttingDown()).thenReturn(false);
+		
+		nm = new NodeMaster<MongoType>(conf, new CachingDocumentNIO<MongoType>(dbc, new NoopCache<MongoType>(), false), new Pipeline(), shutdownHandler);
 		if(!nm.isAlive()) {
 			nm.blockingStart();
 		
@@ -84,7 +88,8 @@ public class RemotePipelineIT {
 	
 	@AfterClass
 	public static void tearDownClass() throws Exception {
-		new Mongo().getDB("jUnit-RemotePipelineTest").dropDatabase();
+		CoreConfiguration conf = ConfigurationFactory.getConfiguration(TEST_NAME);
+		new MongoClient(new MongoClientURI(conf.getDatabaseUrl())).getDB(TEST_NAME).dropDatabase();
 	}
 	
 	@Test

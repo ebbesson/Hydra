@@ -1,4 +1,6 @@
 language: java
 jdk:
   - oraclejdk7
+  - openjdk6
 services: mongodb
+script: mvn verify

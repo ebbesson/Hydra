@@ -36,15 +36,13 @@ public abstract class AbstractStage extends Thread {
 	public static final String ARG_NAME_STAGE_CLASS = "stageClass";
 	public static final String PROPERTY_NAME_COMMANDLINE_ARGS = "cmdline_args";
 	
-	@Parameter(description="The Query that this stage will recieve documents matching")
+	@Parameter(description="The Query that this stage will receive documents matching")
 	private LocalQuery query = new LocalQuery();
 	
 	@Parameter(description="Number of instances (threads) to start of this stage within a single JVM. Defaults to 1.")
 	private int numberOfThreads = 1;
-	
-	public LocalQuery getQuery() {
-		return query;
-	}
+
+	private StageKiller stageKiller = new JvmStageKiller();
 	
 	public static final int CMDLINE_STAGE_NAME_PARAM = 0;
 	public static final int CMDLINE_PIPELINE_HOST_PARAM = 1;
@@ -54,7 +52,10 @@ public abstract class AbstractStage extends Thread {
 	public static final int DEFAULT_HOLD_INTERVAL = 2000;
 	private RemotePipeline remotePipeline = null;
 	private Thread shutDownHook;
-	
+
+	private String stageName;
+	private boolean continueRunning;
+
 	/**
 	 * Initiates an implementation of AbstractDocument. When this method is
 	 * called, and Object of the class has been initialized. The arguments
@@ -62,8 +63,9 @@ public abstract class AbstractStage extends Thread {
 	 * argName)
 	 * 
 	 * @throws RequiredArgumentMissingException
+	 * @throws InitFailedException
 	 */
-	public void init() throws RequiredArgumentMissingException {
+	public void init() throws RequiredArgumentMissingException, InitFailedException {
 		
 	}
 
@@ -74,9 +76,6 @@ public abstract class AbstractStage extends Thread {
 	public void setShutDownHook(Thread shutDownHook) {
 		this.shutDownHook = shutDownHook;
 	}
-
-	private String stageName;
-	private boolean continueRunning;
 
 	/**
 	 * 
@@ -120,6 +119,17 @@ public abstract class AbstractStage extends Thread {
 		return stageName;
 	}
 
+	public LocalQuery getQuery() {
+		return query;
+	}
+
+	public void setStageKiller(StageKiller stageKiller) {
+		this.stageKiller = stageKiller;
+	}
+
+	public void killStage() {
+		this.stageKiller.kill(this);
+	}
 	
 	/**
 	 * Injects the parameters found in the map to any fields annotated with @Stage, whose names matches
@@ -128,10 +138,12 @@ public abstract class AbstractStage extends Thread {
 	 * @throws IllegalArgumentException
 	 * @throws IllegalAccessException
 	 */
-	public void setParameters(Map<String, Object> map) throws IllegalArgumentException, IllegalAccessException {
+	public void setParameters(Map<String, Object> map) throws IllegalArgumentException, IllegalAccessException, RequiredArgumentMissingException {
 		if (getClass().isAnnotationPresent(Stage.class)) {
 			for(Field field : getParameterFields()) {
-				if (map.containsKey(field.getName())) {
+				Parameter fieldAnnotation = field.getAnnotation(Parameter.class);
+				String parameterName = fieldAnnotation.name().isEmpty() ? field.getName() : fieldAnnotation.name();
+				if (map.containsKey(parameterName)) {
 					boolean prevAccessible = field.isAccessible();
 					if (!prevAccessible) {
 						field.setAccessible(true);
@@ -139,15 +151,15 @@ public abstract class AbstractStage extends Thread {
 					if(hasInterface(field.getType(), JsonDeserializer.class)) {
 						try {
 							JsonDeserializer jd = (JsonDeserializer) field.getType().newInstance();
-							jd.fromJson(SerializationUtils.toJson(map.get(field.getName())));
+							jd.fromJson(SerializationUtils.toJson(map.get(parameterName)));
 							field.set(this, jd);
 						} catch (InstantiationException e) {
-							field.set(this, map.get(field.getName()));
+							field.set(this, map.get(parameterName));
 						} catch (JsonException e) {
-							field.set(this, map.get(field.getName()));
+							field.set(this, map.get(parameterName));
 						}
-					} else if(field.getType().isEnum() && !map.get(field.getName()).getClass().isEnum()) {
-						Object value = map.get(field.getName());
+					} else if(field.getType().isEnum() && !map.get(parameterName).getClass().isEnum()) {
+						Object value = map.get(parameterName);
 						try {
 							if(value instanceof Integer) {
 								field.set(this, field.getType().getEnumConstants()[(Integer)value]);
@@ -159,16 +171,18 @@ public abstract class AbstractStage extends Thread {
 						} 
 					}
 					else {
-						field.set(this, map.get(field.getName()));
+						field.set(this, map.get(parameterName));
 					}
 					field.setAccessible(prevAccessible);
+				} else if (field.getAnnotation(Parameter.class).required()) {
+					throw new RequiredArgumentMissingException("Required parameter '" + parameterName + "' not configured");
 				}
 			}
 		} else {
 			throw new NoSuchElementException("No Stage-annotation found on the specified class "+getClass().getCanonicalName());
 		}
 	}
-	
+
 	private boolean hasInterface(Class<?> c, Class<?> inf) {
 		for(Class<?> x : c.getInterfaces()) {
 			if(x.equals(inf)) {
@@ -263,6 +277,8 @@ public abstract class AbstractStage extends Thread {
 
 		} catch (RequiredArgumentMissingException e) {
 			logger.error("Failed to read arguments", e);
+		} catch (InitFailedException e) {
+			logger.error("Failed to initialize Stage", e);
 		} catch (ClassNotFoundException e) {
 			logger.error("Could not find the Stage class in classpath", e);
 		} catch (InstantiationException e) {
@@ -272,7 +288,7 @@ public abstract class AbstractStage extends Thread {
 		} catch (UnknownHostException e) {
 			throw e;
 		} catch (IOException e) {
-			logger.error("Communication failiure when reading properties", e);
+			logger.error("Communication failure when reading properties", e);
 		}
 		return null;
 	}
