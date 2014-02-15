@@ -7,6 +7,8 @@ Mailing list/group: [hydra-processing google group](https://groups.google.com/fo
 
 Current snapshot: [![Build Status](https://secure.travis-ci.org/Findwise/Hydra.png?branch=master)](https://travis-ci.org/Findwise/Hydra)
 
+This readme uses Google Analytics for basic visit statistics thanks to ga-beacon: [![Analytics](https://ga-beacon.appspot.com/UA-45204268-3/Hydra/readme)](https://github.com/igrigorik/ga-beacon)
+
 What you'll need
 ----------------
 
@@ -53,9 +55,9 @@ There are a few different methods for setting up pipelines in Hydra:
 
 * Script your pipeline setup with the `database-impl/mongodb` package
 * Set up the Admin Service webapp and configure the pipeline using its REST interface (see the readme file in the `admin-service` package)
-* Use the `CmdlineInserter`-class that you can find in the `examples` project under the Hydra root
+* Use the `CmdlineInserter`-class that you can find in the `tools` project under the Hydra root
 
-Using the CmdlineInserter, if you run `mvn clean install` on that project, you will get a runnable jar that you can use (`java -jar inserter-jar-with-dependencies.jar`) Below, we'll assume that's the method you are using. 
+Using the CmdlineInserter, if you run `mvn clean install` on that project, you will get a runnable jar that you can use (`java -jar hydra-inserter.jar`) Below, we'll assume that's the method you are using. 
 
 ### Inserting a library into Hydra
 When inserting the library, you will need to provide the name of the jar and an ID that uniquely identifies this library. Should you give an ID that already exists, the old library will be overwritten and *any pipeline stages being run from it will be restarted.*
@@ -127,23 +129,30 @@ Basically, an input connector pushes data directly to mongodb by creating an ins
 A `StdinInput`connector can be found in the `stages/debugging` package, and can be used as a reference implementation.
 
 ## Setting up a demo pipeline
-Start the mongo deamon (mongod), in your `mongodb/bin` folder
 
-Build the following projects by running `mvn clean install`
+To set up a pipeline, we want to add *stage libraries* containing stages, *stage configuration* to instruct Hydra how the stages should be run, and a *document* to process.
 
-* `parent` (creates `hydra-core.jar` in `distribution/bin`)
-* `examples` (creates `inserter-jar-with-dependencies.jar` in `examples/target`)
-* `stages/processing/basic` (creates `basic-jar-with-dependencies.jar` in `stages/processing/basic/target`)
-* `stages/debugging` (creates `debugging-jar-with-dependencies.jar` in `stages/debugging`)
+Start the mongo deamon (mongod), in your `mongodb/bin` folder.
+
+Get hold of the following jars, either by building Hydra or downloading from https://github.com/Findwise/Hydra/releases
+
+* Hydra Core: `hydra-core.jar`
+* Hydra Inserter (CmdLineInserter): `hydra-inserter.jar`
+* Stage library - Basic: `basic-jar-with-dependencies.jar`
+* Stage library - Debugging: `debugging-jar-with-dependencies.jar`
+
+Place the jars in a folder and enter it.
 
 Insert the libraries to hydra:
 
-* 	`java -jar inserter-jar-with-dependencies.jar -a -p pipeline -l -i basic basic-jar-with-dependencies.jar`
-* 	 `java -jar inserter-jar-with-dependencies.jar -a -p pipeline -l -i debug debugging-jar-with-dependencies.jar`
+* Basic stages as library "basic": `java -jar hydra-inserter.jar --add --pipeline pipeline --library --id basic basic-jar-with-dependencies.jar`
+* Debugging stages as library "debug": `java -jar hydra-inserter.jar --add --pipeline pipeline --library --id debug debugging-jar-with-dependencies.jar`
+
+You've now added the stage libraries `basic` and `debug` to the pipeline `pipeline`. The IDs given are used when setting up your stages, to tell Hydra where it should look for the stage class. They can be anything you want.
 
 Create configuration files:
 
-* Create a file called `setTitleStage.properties` containing
+* Create a file called `setTitleStage.json` containing
 
 ```
 
@@ -156,12 +165,12 @@ Create configuration files:
 
 ```
 
-* Create a file called `stdOutStage.properties` containing
+* Create a file called `stdOutStage.json` containing
 
 ```
 
 	{
-		stageClass: "com.findwise.hydra.debugging.StdoutOutput"
+		stageClass: "com.findwise.hydra.debugging.StdoutOutput",
 		query : { 
 			"touched" : { 
 				"setTitleStage" : true 
@@ -173,10 +182,12 @@ Create configuration files:
 
 Add the stages:
 
-* `java -jar inserter-jar-with-dependencies.jar -a -p pipeline -s -i basic -n setTitleStage setTitleStage.properties` 
-* `java -jar inserter-jar-with-dependencies.jar -a -p pipeline -s -i debug -n stdOutStage stdOutStage.properties` 
+* `java -jar hydra-inserter.jar --add --pipeline pipeline --stage --id basic --name setTitleStage setTitleStage.json` 
+* `java -jar hydra-inserter.jar --add --pipeline pipeline --stage --id debug --name stdOutStage stdOutStage.json` 
 
-Start hydra by running `java -jar hydra-core.jar`
+You have now added the stages `setTitleStage` and `stdOutStage` to the pipeline `pipeline` using the stage libraries `basic` and `debug`, respectively.
+
+Start hydra by running `java -jar hydra-core.jar`. You will now see a lot of logging, and should see the two stages starting up. Wait until Hydra is logging `No updates found".
 
 Everything is now up and running. To add a document for processing, just type
 
@@ -187,7 +198,7 @@ Everything is now up and running. To add a document for processing, just type
 
 ```
 
-Hydra will print out the processed document, that should contain a title aswell as the imported text.
+Hydra will print out the processed document, that should contain a title as well as the imported text. Try modifying the configuration, inserting it again, then insert a new document and see what happens!
 
 
 ## Debugging
