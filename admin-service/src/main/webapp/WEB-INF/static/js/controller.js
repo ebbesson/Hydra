@@ -18,7 +18,8 @@ var pages = {
     'stagegroups': '/hydra/stagegroups',
     'libraries': '/hydra/libraries',
     'documents': '/hydra/documents',
-    'upload': '/hydra/libraries'
+    'upload': '/hydra/libraries',
+    'pipeline': '/hydra/stagegroups'
 };
 
 
@@ -46,6 +47,12 @@ function refreshPage(pageId) {
                 }
 
             });
+            return data;
+        };
+    }
+
+    else if(pageId === 'pipeline'){
+        callback = function(data) {
             return data;
         };
     }

@@ -28,6 +28,7 @@
                         <li><a href="#stagegroups">Stage groups</a></li>
                         <li><a href="#libraries"><span class="glyphicon glyphicon-book"></span> Libraries</a></li>
                         <li><a href="#documents"><span class="glyphicon glyphicon-file"></span> Documents</a></li>
+                        <li><a href="#pipeline"><span class="glyphicon glyphicon-file"></span> Show Pipeline</a></li>
                     </ul>
                  </div>
             </nav>
@@ -43,10 +44,10 @@
 		style="display: none"></article>
 	<article id="upload_content" class="container"
 		style="display: none"></article>
-
+        <article id="pipeline_content" class="container"
+		style="display: none"></article>
         </main>
-	<script type="text/x-handlebars-template" id="status"
-		class="template">
+	<script type="text/x-handlebars-template" id="status" class="template">
 	{{#with documents}}
 	<div class="well">
 		<h1>Stats</h1>
@@ -74,6 +75,14 @@
 		</table>
 	</div>
 	{{/with}}
+	</script>
+        <script type="text/x-handlebars-template" id="pipeline" class="template">
+        <div class="row">
+            <div class="col-md-12">
+                TJO
+                <div id="canvas"></div>
+            </div>
+        </div>
 	</script>
 	<script type="text/x-handlebars-template" id="stagegroups"
 		class="template">
@@ -421,7 +430,10 @@
                     {{/listDocuments}}
     </script>
 
+    <script type="text/javascript" src="/hydra/webjars/raphaeljs/2.1.2/raphael-min.js"></script>
     <script type="text/javascript" src="/hydra/webjars/jquery/1.11.0/jquery.min.js"></script>
+     <script type="text/javascript" src="/hydra/gui/js/libs/dracula_graffle.js"></script>
+    <script type="text/javascript" src="/hydra/gui/js/libs/dracula_graph.js"></script>
     <script type="text/javascript" src="/hydra/gui/js/controller.js"></script>
     <script type="text/javascript" src="/hydra/gui/js/helpers.js"></script>
     <script type="text/javascript" src="/hydra/webjars/handlebars/1.2.1/handlebars.min.js"></script>

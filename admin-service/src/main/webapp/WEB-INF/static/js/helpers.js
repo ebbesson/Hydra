@@ -72,10 +72,10 @@ function prettyPrint(value) {
     if (typeof value == 'string') {
         return new Handlebars.SafeString(value);
     } else if (typeof value == 'object') {
-        if(value.value){
+        if (value.value) {
             return new Handlebars.SafeString(JSON.stringify(value.value));
         } else {
-             return new Handlebars.SafeString('-');
+            return new Handlebars.SafeString('-');
         }
     } else {
         return new Handlebars.SafeString('-');
@@ -127,4 +127,30 @@ function msToReadable(ms) {
     if (minutes > 0)
         res += minutes + " minute" + (minutes != 1 ? "s" : "") + " and ";
     return res + seconds + " second" + (seconds != 1 ? "s" : "");
+}
+
+function renderPipeline() {
+
+
+    var width = 600;
+    var height = 400;
+
+    var g = new Graph();
+
+    /* connect nodes with edges */
+    g.addEdge("from", "to", {directed: true, label: "Ohyea"});
+    g.addEdge("to", "too", {directed: true, label: "hiiiha"});
+
+
+    /* layout the graph using the Spring layout implementation */
+    var layouter = new Graph.Layout.Spring(g);
+
+    /* draw the graph using the RaphaelJS draw implementation */
+    var renderer = new Graph.Renderer.Raphael('canvas', g, width, height);
+
+    redraw = function() {
+        layouter.layout();
+        renderer.draw();
+    };
+    redraw();
 }

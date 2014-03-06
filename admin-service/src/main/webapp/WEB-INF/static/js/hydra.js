@@ -1,8 +1,6 @@
 window.model = {};
 window.templates = {};
 
-
-
 $(document).ready(
 	function() {
                 
@@ -31,4 +29,5 @@ $(document).ready(
         Handlebars.registerHelper('printProperties', printProperties);
 	showCurrentPage();
 	refreshCurrentPage();
+        renderPipeline();
 });
