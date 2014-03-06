@@ -141,11 +141,7 @@ function renderPipeline() {
     g.addEdge("from", "to", {directed: true, label: "Ohyea"});
     g.addEdge("to", "too", {directed: true, label: "hiiiha"});
 
-
-    /* layout the graph using the Spring layout implementation */
     var layouter = new Graph.Layout.Spring(g);
-
-    /* draw the graph using the RaphaelJS draw implementation */
     var renderer = new Graph.Renderer.Raphael('canvas', g, width, height);
 
     redraw = function() {
